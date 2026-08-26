@@ -17,12 +17,15 @@
 
   <!-- Azure deploy: copy the pre-built Vue SPA into wwwroot during publish.
        The CI workflow builds frontend/dist first and passes it via -p:SpaDistDir.
-       NOTE: forward slashes are required - backslash globs match nothing on
-       Linux build agents. -->
-  <Target Name="IncludeSpaDist" BeforeTargets="ComputeFilesToPublish" Condition="'$(SpaDistDir)' != ''">
+       Uses an explicit Copy into $(PublishDir): item-pipeline tricks
+       (Content/LinkBase, ContentWithTargetPath) were silently dropped. -->
+  <Target Name="IncludeSpaDist" AfterTargets="ComputeFilesToPublish" Condition="'$(SpaDistDir)' != ''">
     <ItemGroup>
-      <Content Include="$(SpaDistDir)/**/*" CopyToPublishDirectory="PreserveNewest" LinkBase="wwwroot/" />
+      <_SpaFiles Include="$(SpaDistDir)/**/*" />
     </ItemGroup>
+    <Copy SourceFiles="@(_SpaFiles)"
+          DestinationFiles="@(_SpaFiles->'$(PublishDir)wwwroot/%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
   </Target>
 
 </Project>
