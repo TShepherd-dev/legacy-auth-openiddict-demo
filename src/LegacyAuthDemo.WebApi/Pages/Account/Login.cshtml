@@ -1,0 +1,44 @@
+@page
+@model LegacyAuthDemo.WebApi.Pages.Account.LoginModel
+@{
+    ViewData["Title"] = "Sign in";
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Legacy Auth Demo - Sign in</title>
+    <style>
+        body { font-family: system-ui, sans-serif; background: #f4f6f8; display: flex; justify-content: center; padding-top: 10vh; }
+        .card { background: white; border-radius: 8px; box-shadow: 0 2px 12px rgba(0,0,0,.08); padding: 2rem; width: 360px; }
+        h1 { font-size: 1.25rem; margin: 0 0 .5rem; }
+        p.hint { color: #667; font-size: .85rem; }
+        label { display: block; font-size: .85rem; margin: 1rem 0 .25rem; }
+        input { width: 100%; box-sizing: border-box; padding: .5rem; border: 1px solid #ccd; border-radius: 4px; }
+        button { margin-top: 1.25rem; width: 100%; padding: .6rem; border: 0; border-radius: 4px; background: #2563eb; color: white; font-weight: 600; cursor: pointer; }
+        button:hover { background: #1d4ed8; }
+        .error { color: #b91c1c; background: #fee2e2; border-radius: 4px; padding: .5rem; font-size: .85rem; margin-top: 1rem; }
+    </style>
+</head>
+<body>
+<div class="card">
+    <h1>Legacy Auth Demo</h1>
+    <p class="hint">Credentials are validated against the simulated legacy user store (alice / bob, password "Passw0rd!").</p>
+
+    <form method="post">
+        <div asp-validation-summary="ModelOnly"></div>
+        <input type="hidden" asp-for="ReturnUrl" />
+        <label asp-for="UserName"></label>
+        <input asp-for="UserName" autofocus autocomplete="username" />
+        <label asp-for="Password"></label>
+        <input asp-for="Password" autocomplete="current-password" />
+        @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+        {
+            <div class="error">@Model.ErrorMessage</div>
+        }
+        <button type="submit">Sign in</button>
+    </form>
+</div>
+</body>
+</html>

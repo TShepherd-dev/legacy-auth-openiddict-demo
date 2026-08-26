@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="OpenIddict.AspNetCore" Version="7.6.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LegacyAuthDemo.Authorization\LegacyAuthDemo.Authorization.csproj" />
+    <ProjectReference Include="..\LegacyAuthDemo.Domain\LegacyAuthDemo.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

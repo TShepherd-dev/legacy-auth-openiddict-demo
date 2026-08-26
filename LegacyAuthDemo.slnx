@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/LegacyAuthDemo.Authorization/LegacyAuthDemo.Authorization.csproj" />
+    <Project Path="src/LegacyAuthDemo.Domain/LegacyAuthDemo.Domain.csproj" />
+    <Project Path="src/LegacyAuthDemo.WebApi/LegacyAuthDemo.WebApi.csproj" />
+  </Folder>
+</Solution>
