@@ -9,8 +9,8 @@ namespace LegacyAuthDemo.Authorization.Sessions;
 /// </summary>
 public interface IAuthUserSession
 {
-    public const string SessionCookieName = "ap_session";
-    public const string SessionIdPropertyName = "ap_session_id";
+    public const string SessionCookieName = "demo_session";
+    public const string SessionIdPropertyName = "demo_session_id";
 
     /// <summary>Creates (or returns) the session id for the current user and records it in the auth properties.</summary>
     Task<string> CreateSessionIdAsync(ClaimsPrincipal principal, AuthenticationProperties properties);

@@ -87,7 +87,7 @@ public class LegacyOAuthOpenIdStartup
         {
             options.LoginPath = "/account/login";
             options.LogoutPath = "/account/logout";
-            options.Cookie.Name = "ap_identity";
+            options.Cookie.Name = "demo_identity";
             options.Events = new CookieAuthenticationEvents
             {
                 OnRedirectToLogin = ctx =>

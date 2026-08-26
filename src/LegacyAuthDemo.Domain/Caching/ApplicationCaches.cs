@@ -42,7 +42,7 @@ public static class ApplicationCaches
     public static void RemoveUserContext(int userId) =>
         UserCache.TryRemove(userId.ToString(), out _);
 
-    /// <summary>Mirrors the legacy user manager's ClearApUserCaches - called on logout/sign-out.</summary>
+    /// <summary>Mirrors the legacy user manager's ClearDemoUserCaches - called on logout/sign-out.</summary>
     public static void ClearUserCaches(int userId)
     {
         RemoveAuthUser(userId);

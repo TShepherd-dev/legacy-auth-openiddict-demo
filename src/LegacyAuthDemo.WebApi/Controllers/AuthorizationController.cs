@@ -29,23 +29,23 @@ public class AuthorizationController : Controller
 {
     private readonly IOpenIddictApplicationManager _applicationManager;
     private readonly IOpenIddictScopeManager _scopeManager;
-    private readonly LegacySignInManager _apSignInManager;
-    private readonly LegacyUserManager _apUserManager;
+    private readonly LegacySignInManager _demoSignInManager;
+    private readonly LegacyUserManager _demoUserManager;
     private readonly IAuthUserSession _authUserSession;
     private readonly IOptionsMonitor<OpenIddictServerOptions> _serverOptions;
 
     public AuthorizationController(
         IOpenIddictApplicationManager applicationManager,
         IOpenIddictScopeManager scopeManager,
-        LegacySignInManager apSignInManager,
-        LegacyUserManager apUserManager,
+        LegacySignInManager demoSignInManager,
+        LegacyUserManager demoUserManager,
         IAuthUserSession authUserSession,
         IOptionsMonitor<OpenIddictServerOptions> serverOptions)
     {
         _applicationManager = applicationManager;
         _scopeManager = scopeManager;
-        _apSignInManager = apSignInManager;
-        _apUserManager = apUserManager;
+        _demoSignInManager = demoSignInManager;
+        _demoUserManager = demoUserManager;
         _authUserSession = authUserSession;
         _serverOptions = serverOptions;
     }
@@ -103,7 +103,7 @@ public class AuthorizationController : Controller
                 IdentityConstants.ApplicationScheme);
         }
 
-        var user = await _apUserManager.GetUserAsync(result.Principal);
+        var user = await _demoUserManager.GetUserAsync(result.Principal);
         if (user is null)
         {
             return Challenge(new AuthenticationProperties { RedirectUri = Request.Path + Request.QueryString },
@@ -114,7 +114,7 @@ public class AuthorizationController : Controller
                           throw new InvalidOperationException($"Unknown application: {request.ClientId}");
 
         // Build the principal and SCOPE its claims down to what the client asked for.
-        var principal = await _apSignInManager.CreateUserPrincipalAsync(user);
+        var principal = await _demoSignInManager.CreateUserPrincipalAsync(user);
         principal.SetScopes(request.GetScopes());
         principal.SetResources(await _scopeManager.ListResourcesAsync(request.GetScopes()).ToListAsync());
 
@@ -171,23 +171,23 @@ public class AuthorizationController : Controller
 
     /// <summary>
     /// Mirrors GenerateTokensForPasswordGrantType: validate credentials against the
-    /// LEGACY store, then mint a MINIMAL principal - only sub/ap_clientId/ap_siteId/
-    /// ap_schema ride inside the token ("not secure to add more" - legacy comment).
+    /// LEGACY store, then mint a MINIMAL principal - only sub/demo_clientId/demo_siteId/
+    /// demo_schema ride inside the token ("not secure to add more" - legacy comment).
     /// </summary>
     private async Task<IActionResult> GenerateTokensForPasswordGrantType(OpenIddictRequest request)
     {
-        var user = await _apUserManager.FindUserEntityByNameAsync(request.Username!);
+        var user = await _demoUserManager.FindUserEntityByNameAsync(request.Username!);
         if (user is null)
         {
             return ForbidError(LegacyAuthConstants.Errors.ErrorLoginBadUserDetails,
                 "The username/password couple is invalid.");
         }
 
-        if (!await _apUserManager.CheckPasswordAsync(user, request.Password!))
+        if (!await _demoUserManager.CheckPasswordAsync(user, request.Password!))
         {
-            if (await _apUserManager.IsLockedOutAsync(user))
+            if (await _demoUserManager.IsLockedOutAsync(user))
             {
-                await _apUserManager.AccessFailedAsync(user);
+                await _demoUserManager.AccessFailedAsync(user);
                 return ForbidError(LegacyAuthConstants.Errors.ErrorLoginAccountLocked,
                     "The account is temporarily locked.");
             }
@@ -195,19 +195,19 @@ public class AuthorizationController : Controller
                 "The username/password couple is invalid.");
         }
 
-        await _apUserManager.ResetAccessFailedCountAsync(user);
+        await _demoUserManager.ResetAccessFailedCountAsync(user);
 
         var identity = new ClaimsIdentity(
-            authenticationType: "ApPasswordGrant",
+            authenticationType: "DemoPasswordGrant",
             nameType: "name",
             roleType: Claims.Role);
 
         // MINIMAL claims only - everything else stays server-side by design.
         identity.AddClaim(new Claim(Claims.Subject, user.UserId.ToString())
             .SetDestinations(Destinations.AccessToken));
-        identity.AddClaim(new Claim(LegacyAuthConstants.Claims.ApClientId, request.ClientId!)
+        identity.AddClaim(new Claim(LegacyAuthConstants.Claims.DemoClientId, request.ClientId!)
             .SetDestinations(Destinations.AccessToken));
-        identity.AddClaim(new Claim(LegacyAuthConstants.Claims.ApSiteId, user.SiteId.ToString())
+        identity.AddClaim(new Claim(LegacyAuthConstants.Claims.DemoSiteId, user.SiteId.ToString())
             .SetDestinations(Destinations.AccessToken));
         identity.AddClaim(new Claim(LegacyAuthConstants.Claims.Schema, OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)
             .SetDestinations(Destinations.AccessToken));
@@ -237,14 +237,14 @@ public class AuthorizationController : Controller
     {
         var result = await HttpContext.AuthenticateAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
 
-        var user = await _apUserManager.GetUserAsync(result.Principal!);
+        var user = await _demoUserManager.GetUserAsync(result.Principal!);
         if (user is null || user.UserId <= 0)
         {
             return ForbidError(LegacyAuthConstants.Errors.ErrorInvalidToken,
                 "The token is no longer valid.");
         }
 
-        if (!await _apSignInManager.CanSignInAsync(user))
+        if (!await _demoSignInManager.CanSignInAsync(user))
         {
             return ForbidError(LegacyAuthConstants.Errors.ErrorLoginNoLongerAllowed,
                 "The user is no longer allowed to sign in.");
@@ -254,8 +254,8 @@ public class AuthorizationController : Controller
 
         EnsureClaim(identity, Claims.Subject, user.UserId.ToString(), Destinations.AccessToken, Destinations.IdentityToken);
         EnsureClaim(identity, "name", user.UserName, Destinations.AccessToken, Destinations.IdentityToken);
-        EnsureClaim(identity, LegacyAuthConstants.Claims.ApClientId, result.Principal.FindFirstValue(LegacyAuthConstants.Claims.ApClientId) ?? request.ClientId!, Destinations.AccessToken);
-        EnsureClaim(identity, LegacyAuthConstants.Claims.ApSiteId, user.SiteId.ToString(), Destinations.AccessToken);
+        EnsureClaim(identity, LegacyAuthConstants.Claims.DemoClientId, result.Principal.FindFirstValue(LegacyAuthConstants.Claims.DemoClientId) ?? request.ClientId!, Destinations.AccessToken);
+        EnsureClaim(identity, LegacyAuthConstants.Claims.DemoSiteId, user.SiteId.ToString(), Destinations.AccessToken);
         EnsureClaim(identity, LegacyAuthConstants.Claims.Schema, OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme, Destinations.AccessToken);
 
         // Re-hydrate permissions into cache so the validation event sees fresh data.
@@ -276,7 +276,7 @@ public class AuthorizationController : Controller
     [AcceptVerbs("GET", "POST", Route = "~/ap-auth-server/connect/logout")]
     public async Task<IActionResult> Logout()
     {
-        await _apSignInManager.SignOutAsync();
+        await _demoSignInManager.SignOutAsync();
 
         return SignOut(
             authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
@@ -334,7 +334,7 @@ public class AuthorizationController : Controller
 
         // NOTE: the legacy version additionally stores an OpenIddictTokenDescriptor
         // row (ReferenceId) so issued PATs can be revoked; trimmed for demo brevity.
-        // The validation event maps the scope claim to ap_permissions claims
+        // The validation event maps the scope claim to demo_permissions claims
         // (api.X -> route.X) WITHOUT consulting the user's cached permission set,
         // so a scoped PAT can never inherit its owner's full powers.
         var descriptor = new SecurityTokenDescriptor
@@ -348,12 +348,12 @@ public class AuthorizationController : Controller
             Claims = new Dictionary<string, object>(StringComparer.Ordinal)
             {
                 [Claims.Subject] = sUserId,
-                [LegacyAuthConstants.Claims.ApTokenType] =
-                    LegacyAuthConstants.AuthenticationTokenTypes.ApPersonalAccessToken,
+                [LegacyAuthConstants.Claims.DemoTokenType] =
+                    LegacyAuthConstants.AuthenticationTokenTypes.DemoPersonalAccessToken,
                 [Claims.Scope] = patRequest.Scopes is null
                     ? string.Empty
                     : string.Join(' ', patRequest.Scopes),
-                [LegacyAuthConstants.Claims.ApClientId] = patRequest.PartnerName ?? "unknown-partner"
+                [LegacyAuthConstants.Claims.DemoClientId] = patRequest.PartnerName ?? "unknown-partner"
             }
         };
 
@@ -417,7 +417,7 @@ public class AuthorizationController : Controller
         {
             // Local cookie/password logins are "pwd"; only external SSO providers
             // would report a different authentication method (mirrors legacy).
-            var amr = identity.AuthenticationType is "ApExternalSSO" ? "external" : "pwd";
+            var amr = identity.AuthenticationType is "DemoExternalSSO" ? "external" : "pwd";
             EnsureClaim(identity, "amr", amr, Destinations.IdentityToken);
             EnsureClaim(identity, "idp", "local", Destinations.IdentityToken);
         }
@@ -439,7 +439,7 @@ public class AuthorizationController : Controller
 
     /// <summary>
     /// Mirrors GetDestinations: decide which tokens each claim may be embedded in.
-    /// NOTE: ap_permissions are deliberately NOT given any destination - permissions
+    /// NOTE: demo_permissions are deliberately NOT given any destination - permissions
     /// never leave the server; they are re-hydrated after validation.
     /// </summary>
     private static IEnumerable<string> GetDestinations(Claim claim, ClaimsPrincipal principal)

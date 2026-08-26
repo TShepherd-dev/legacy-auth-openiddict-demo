@@ -22,7 +22,7 @@ public class LegacyUserDal
 
     /// <summary>
     /// Mirrors AddPermissionClaimsToUser(userId, clientId, siteId): reads the legacy
-    /// permission tables and turns each row into an "ap_permissions" claim.
+    /// permission tables and turns each row into an "demo_permissions" claim.
     /// In the demo, permissions are derived from scope-like rows per user.
     /// </summary>
     public List<Claim> GetPermissionClaimsForUser(int userId, int clientId, int siteId)

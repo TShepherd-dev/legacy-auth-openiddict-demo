@@ -14,7 +14,7 @@ namespace LegacyAuthDemo.Authorization.Authorization;
 /// <summary>
 /// Mirrors the legacy OpenIddict validation handler - THE key customisation in the whole design.
 ///
-/// Tokens deliberately carry only identifiers (sub / ap_clientId / ap_siteId).
+/// Tokens deliberately carry only identifiers (sub / demo_clientId / demo_siteId).
 /// This handler runs AFTER OpenIddict has validated the access token
 /// (order = ValidateAccessToken + 1) and re-hydrates the caller's FULL permission
 /// set from the legacy caches onto the request principal:
@@ -32,41 +32,41 @@ public class LegacyOpenIdDictEventHandler :
     private static readonly Mutex CacheMutex = new(false, @"LegacyAuthDemo\UserCacheMutex");
 
     /// <summary>HttpContext.Items key for the RouteAudit-equivalent per-request context.</summary>
-    public const string RequestUserContextKey = "ap_request_user_context";
+    public const string RequestUserContextKey = "demo_request_user_context";
 
-    private readonly LegacyUserManager _apUserManager;
+    private readonly LegacyUserManager _demoUserManager;
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly ILogger<LegacyOpenIdDictEventHandler> _logger;
 
     public LegacyOpenIdDictEventHandler(
-        LegacyUserManager apUserManager,
+        LegacyUserManager demoUserManager,
         IHttpContextAccessor httpContextAccessor,
         ILogger<LegacyOpenIdDictEventHandler> logger)
     {
-        _apUserManager = apUserManager;
+        _demoUserManager = demoUserManager;
         _httpContextAccessor = httpContextAccessor;
         _logger = logger;
     }
 
     public ValueTask HandleAsync(OpenIddict.Validation.OpenIddictValidationEvents.ProcessAuthenticationContext context)
     {
-        AddApPermissionsToRequestIdentity(context);
+        AddDemoPermissionsToRequestIdentity(context);
         return ValueTask.CompletedTask;
     }
 
-    public void AddApPermissionsToRequestIdentity(OpenIddict.Validation.OpenIddictValidationEvents.ProcessAuthenticationContext context)
+    public void AddDemoPermissionsToRequestIdentity(OpenIddict.Validation.OpenIddictValidationEvents.ProcessAuthenticationContext context)
     {
         var httpContext = _httpContextAccessor.HttpContext;
         if (httpContext is null)
         {
-            context.Reject("ApPermissionAdd.NoHttpRequest", "No HttpContext available.");
+            context.Reject("DemoPermissionAdd.NoHttpRequest", "No HttpContext available.");
             return;
         }
 
         if (context.AccessTokenPrincipal?.Identity is not ClaimsIdentity accessTokenIdentity ||
             !accessTokenIdentity.IsAuthenticated)
         {
-            context.Reject("ApPermissionAdd.NoClaims", "Access token principal has no usable claims identity.");
+            context.Reject("DemoPermissionAdd.NoClaims", "Access token principal has no usable claims identity.");
             return;
         }
 
@@ -77,7 +77,7 @@ public class LegacyOpenIdDictEventHandler :
 
         if (string.IsNullOrEmpty(sUserId) || !int.TryParse(sUserId, out var userId))
         {
-            context.Reject("ApPermissionAdd.NoUserId", "Token carries no resolvable user id.");
+            context.Reject("DemoPermissionAdd.NoUserId", "Token carries no resolvable user id.");
             return;
         }
 
@@ -85,13 +85,13 @@ public class LegacyOpenIdDictEventHandler :
 
         // ---- 2a. Personal Access Token: map scopes to permissions, REQUEST-LIFETIME ONLY ----
         if (string.Equals(
-                accessTokenIdentity.FindFirst(LegacyAuthConstants.Claims.ApTokenType)?.Value,
-                LegacyAuthConstants.AuthenticationTokenTypes.ApPersonalAccessToken,
+                accessTokenIdentity.FindFirst(LegacyAuthConstants.Claims.DemoTokenType)?.Value,
+                LegacyAuthConstants.AuthenticationTokenTypes.DemoPersonalAccessToken,
                 StringComparison.OrdinalIgnoreCase))
         {
             permissionClaims = BuildPermissionClaimsFromScopes(accessTokenIdentity);
             _logger.LogInformation(
-                "LegacyOpenIdDictEventHandler.AddApPermissionsToRequestIdentity: PAT {UserId} -> {Count} scoped permissions.",
+                "LegacyOpenIdDictEventHandler.AddDemoPermissionsToRequestIdentity: PAT {UserId} -> {Count} scoped permissions.",
                 sUserId, permissionClaims.Count);
         }
         else
@@ -106,7 +106,7 @@ public class LegacyOpenIdDictEventHandler :
 
             if (requestUser is null)
             {
-                context.Reject("ApPermissionAdd.UserNotFound", $"User {sUserId} could not be loaded.");
+                context.Reject("DemoPermissionAdd.UserNotFound", $"User {sUserId} could not be loaded.");
                 return;
             }
 
@@ -137,12 +137,12 @@ public class LegacyOpenIdDictEventHandler :
 
             // Sync-over-async mirrors the legacy call pattern into the UserManager,
             // which reads through the custom store -> DAL and refills both caches.
-            var user = _apUserManager.FindByIdAsync(sUserId).GetAwaiter().GetResult();
+            var user = _demoUserManager.FindByIdAsync(sUserId).GetAwaiter().GetResult();
 
             if (user is null)
             {
                 _logger.LogWarning(
-                    "LegacyOpenIdDictEventHandler.AddApPermissionsToRequestIdentity: user {UserId} not found during repopulation.", sUserId);
+                    "LegacyOpenIdDictEventHandler.AddDemoPermissionsToRequestIdentity: user {UserId} not found during repopulation.", sUserId);
                 return null;
             }
 

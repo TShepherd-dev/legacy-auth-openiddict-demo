@@ -28,11 +28,11 @@ public class LegacyRoutePermissionAuthorizationPolicyProvider : DefaultAuthoriza
     {
         if (policyName.StartsWith(LegacyAuthConstants.PolicyPrefix, StringComparison.OrdinalIgnoreCase))
         {
-            var apPermission = policyName[LegacyAuthConstants.PolicyPrefix.Length..];
+            var demoPermission = policyName[LegacyAuthConstants.PolicyPrefix.Length..];
 
             AuthorizationPolicy policy = new AuthorizationPolicyBuilder(OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)
                 .RequireAuthenticatedUser()
-                .AddRequirements(new LegacyRoutePermissionRequirement(_httpContextAccessor, apPermission))
+                .AddRequirements(new LegacyRoutePermissionRequirement(_httpContextAccessor, demoPermission))
                 .Build();
 
             return Task.FromResult<AuthorizationPolicy?>(policy);
@@ -42,8 +42,8 @@ public class LegacyRoutePermissionAuthorizationPolicyProvider : DefaultAuthoriza
     }
 }
 
-/// <summary>Named policies used by controllers, mirroring the legacy ApPolicies constants.</summary>
-public static class ApPolicies
+/// <summary>Named policies used by controllers, mirroring the legacy DemoPolicies constants.</summary>
+public static class DemoPolicies
 {
     public const string CanViewDemo = LegacyAuthConstants.PolicyPrefix + "route.demo.view";
     public const string CanManageDemo = LegacyAuthConstants.PolicyPrefix + "route.demo.manage";

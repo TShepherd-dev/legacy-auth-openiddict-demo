@@ -8,7 +8,7 @@ namespace LegacyAuthDemo.Authorization.Authorization;
 /// Mirrors the legacy route-permission requirement: BOTH the requirement and its own
 /// handler in one class. The legacy system has no ASP.NET "policies" - it has
 /// named permissions on resources - so this class evaluates the caller's
-/// ap_permissions claims (hydrated by LegacyOpenIdDictEventHandler) directly.
+/// demo_permissions claims (hydrated by LegacyOpenIdDictEventHandler) directly.
 /// </summary>
 public class LegacyRoutePermissionRequirement :
     AuthorizationHandler<LegacyRoutePermissionRequirement>,
@@ -40,7 +40,7 @@ public class LegacyRoutePermissionRequirement :
             return;
         }
 
-        // If the OpenIddict validation event attached ap_permissions claims to
+        // If the OpenIddict validation event attached demo_permissions claims to
         // this principal, they are AUTHORITATIVE: normal tokens carry the
         // user's full set, while PATs carry only their scope-mapped subset.
         // Never widen them from the shared caches - that would let a scoped
@@ -95,5 +95,5 @@ public class LegacyRoutePermissionRequirement :
     }
 
     private static void SetRouteStatus(HttpContext httpContext, string status) =>
-        httpContext.Items["ap_route_status"] = status;
+        httpContext.Items["demo_route_status"] = status;
 }

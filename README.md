@@ -12,8 +12,8 @@ authorization policies driven by legacy permissions instead of ASP.NET roles.
 
 ## What makes this approach distinctive
 
-1. **Tokens carry minimal claims.** Only `sub`, `ap_clientId`, `ap_siteId`,
-   `ap_schema` (+ `ap_tokentype` for PATs). No roles, no permissions, no PII.
+1. **Tokens carry minimal claims.** Only `sub`, `demo_clientId`, `demo_siteId`,
+   `demo_schema` (+ `demo_tokentype` for PATs). No roles, no permissions, no PII.
    If the permission model changes, existing tokens stay valid.
 2. **Rich permissions never leave the server.** They live in process-wide
    in-memory caches (`ApplicationCaches`) in front of the "legacy" database.
@@ -21,7 +21,7 @@ authorization policies driven by legacy permissions instead of ASP.NET roles.
    handler (`LegacyOpenIdDictEventHandler`) runs immediately after token validation,
    loads the caller's permission set from the cache (mutex-guarded DB repopulation on
    miss) and attaches them to the principal as a **second ClaimsIdentity**
-   (`ap_permissions` claims). Controllers never see raw identity plumbing.
+   (`demo_permissions` claims). Controllers never see raw identity plumbing.
 4. **Personal Access Tokens (PATs).** Third-party tokens map their `scope` claim to
    permissions (`api.users.manage` → `route.users.manage`) *without* consulting — or
    polluting — the owner's cached permissions. A scoped PAT can never inherit its
@@ -29,7 +29,7 @@ authorization policies driven by legacy permissions instead of ASP.NET roles.
 5. **Dynamic policy provider instead of `[Authorize(Roles=...)]`.**
    `LegacyRoutePermissionAuthorizationPolicyProvider` turns
    `[Authorize(Policy = "PERMISSION_route.demo.view")]` into a policy whose
-   requirement checks the hydrated `ap_permissions` claims. The requirement class is
+   requirement checks the hydrated `demo_permissions` claims. The requirement class is
    its own handler (legacy-style: no ASP.NET policies existed before).
 6. **Reference tokens + BFF-friendly surface.** `UseReferenceAccessTokens()` /
    `UseReferenceRefreshTokens()` — opaque tokens revocable server-side; the SPA never
@@ -61,7 +61,7 @@ Auth_OpenIdDict/
 │   │   ├── Stores/LegacyUserStore.cs     # ASP.NET Identity store OVER the legacy DAL
 │   │   ├── Stores/LegacyRoleStore.cs
 │   │   ├── Repositories/                 # LegacyUserManager / LegacySignInManager
-│   │   ├── Sessions/                     # IAuthUserSession: ap_session cookie ↔ session_state
+│   │   ├── Sessions/                     # IAuthUserSession: demo_session cookie ↔ session_state
 │   │   ├── Authorization/
 │   │   │   ├── LegacyOpenIdDictEventHandler.cs   # ★ post-validation permission hydration
 │   │   │   ├── LegacyRoutePermissionAuthorizationPolicyProvider.cs
@@ -84,7 +84,7 @@ Auth_OpenIdDict/
 | `AuthenticationUserIdentity` (backed by `tblUser` via UDFs) | `LegacyUserIdentity` (backed by fake `LegacyUserDal`) |
 | `the legacy user store` / `the legacy user manager` / `the legacy sign-in manager` | `LegacyUserStore` / `LegacyUserManager` / `LegacySignInManager` |
 | `ApplicationCaches.UserCache/AuthUserCache` | same pattern, simplified |
-| `the legacy OpenIddict validation handler` | `LegacyOpenIdDictEventHandler.AddApPermissionsToRequestIdentity` |
+| `the legacy OpenIddict validation handler` | `LegacyOpenIdDictEventHandler.AddDemoPermissionsToRequestIdentity` |
 | `the legacy route-permission policy provider` + Requirement | same names, trimmed |
 | Quartz.NET token pruning job | `TokenCleanupHostedService` (plain hosted service) |
 | `the legacy client seeding service` (#if DEBUG seeding) | `ClientAppRegistration` |
@@ -135,7 +135,7 @@ Note the opaque reference access token (~43 chars, not a JWT).
 curl.exe -k https://localhost:5001/api/demo/me -H "Authorization: Bearer <token>"
 ```
 
-Two identities: the minimal token claims + the hydrated `ap_permissions` — added by
+Two identities: the minimal token claims + the hydrated `demo_permissions` — added by
 the validation event handler *after* OpenIddict validated the reference token.
 
 **Authorization-code + PKCE via the SPA:** open http://localhost:8080, sign in on the
@@ -151,7 +151,7 @@ curl.exe -k -X POST https://localhost:5001/ap-auth-server/connect/getPatToken `
   -d '{"partnerName":"AcmeCorp","scopes":["api.users.manage"]}'
 ```
 
-The returned JWT carries `ap_tokentype=ApPat`. Using it against
+The returned JWT carries `demo_tokentype=DemoPat`. Using it against
 `/api/demo/view-data` yields **403** even though alice herself may view data — the
 PAT only maps `api.users.manage` → `route.users.manage`.
 

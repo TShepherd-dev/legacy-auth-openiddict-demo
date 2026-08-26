@@ -105,7 +105,7 @@ const callViewData = () => run('GET /api/demo/view-data', () => api.fetch('/api/
 const callMe = () => {
   const p = api.fetch('/api/demo/me').then(async (res) => {
     if (res.status === 200 && res.body?.claims) {
-      userinfoClaims.value = JSON.stringify(res.body.claims.find((c) => c.type === 'ap_permissions') ?? {}, null, 2)
+      userinfoClaims.value = JSON.stringify(res.body.claims.find((c) => c.type === 'demo_permissions') ?? {}, null, 2)
     }
     return res
   })

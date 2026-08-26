@@ -43,7 +43,7 @@ export async function logout() {
 
 // The access token is an opaque REFERENCE token (UseReferenceAccessTokens in the
 // server startup), so we can't decode it client-side. The id_token IS a JWT and
-// the userinfo endpoint returns the hydrated ap_permissions claims.
+// the userinfo endpoint returns the hydrated demo_permissions claims.
 export function decodeJwt(token) {
   try {
     const payload = token.split('.')[1]

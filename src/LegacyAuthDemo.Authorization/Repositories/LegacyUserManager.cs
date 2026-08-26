@@ -51,6 +51,6 @@ public class LegacyUserManager : UserManager<LegacyUserIdentity>
         return await FindByIdAsync(userId.ToString());
     }
 
-    /// <summary>Mirrors ClearApUserCaches: forces permission re-hydration from source on next request.</summary>
-    public void ClearApUserCaches(int userId) => ApplicationCaches.ClearUserCaches(userId);
+    /// <summary>Mirrors ClearDemoUserCaches: forces permission re-hydration from source on next request.</summary>
+    public void ClearDemoUserCaches(int userId) => ApplicationCaches.ClearUserCaches(userId);
 }

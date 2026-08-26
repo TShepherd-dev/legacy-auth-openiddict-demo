@@ -43,24 +43,24 @@ public static class LegacyAuthConstants
     /// </summary>
     public static class Claims
     {
-        public const string ApClientId = "ap_clientId";
-        public const string ApSiteId = "ap_siteId";
-        public const string Schema = "ap_schema";
-        public const string ApTokenType = "ap_tokentype";
-        public const string ApTokenRefId = "ap_rId";
+        public const string DemoClientId = "demo_clientId";
+        public const string DemoSiteId = "demo_siteId";
+        public const string Schema = "demo_schema";
+        public const string DemoTokenType = "demo_tokentype";
+        public const string DemoTokenRefId = "demo_rId";
     }
 
     /// <summary>The claim type under which every legacy permission is injected.</summary>
     public static class ClaimTypes
     {
-        public const string Permissions = "ap_permissions";
+        public const string Permissions = "demo_permissions";
     }
 
-    /// <summary>Discriminator values for the ap_tokentype claim.</summary>
+    /// <summary>Discriminator values for the demo_tokentype claim.</summary>
     public static class AuthenticationTokenTypes
     {
-        public const string ApPasswordGrant = "ApPasswordGrant";
-        public const string ApAuthorizationCode = "ApAuthorizationCode";
-        public const string ApPersonalAccessToken = "ApPat";
+        public const string DemoPasswordGrant = "DemoPasswordGrant";
+        public const string DemoAuthorizationCode = "DemoAuthorizationCode";
+        public const string DemoPersonalAccessToken = "DemoPat";
     }
 }

@@ -17,7 +17,7 @@ namespace LegacyAuthDemo.Authorization.Repositories;
 /// </summary>
 public class LegacySignInManager : SignInManager<LegacyUserIdentity>
 {
-    private readonly LegacyUserManager _apUserManager;
+    private readonly LegacyUserManager _demoUserManager;
 
     public LegacySignInManager(
         UserManager<LegacyUserIdentity> userManager,
@@ -29,7 +29,7 @@ public class LegacySignInManager : SignInManager<LegacyUserIdentity>
         IUserConfirmation<LegacyUserIdentity> confirmation)
         : base(userManager, contextAccessor, claimsFactory, optionsAccessor, logger, schemes, confirmation)
     {
-        _apUserManager = (userManager as LegacyUserManager)!;
+        _demoUserManager = (userManager as LegacyUserManager)!;
     }
 
     /// <summary>
@@ -42,7 +42,7 @@ public class LegacySignInManager : SignInManager<LegacyUserIdentity>
         if (result.Succeeded &&
             int.TryParse(result.Principal?.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
         {
-            _apUserManager.ClearApUserCaches(userId);
+            _demoUserManager.ClearDemoUserCaches(userId);
         }
 
         Context.Response.Cookies.Delete(IAuthUserSession.SessionCookieName);

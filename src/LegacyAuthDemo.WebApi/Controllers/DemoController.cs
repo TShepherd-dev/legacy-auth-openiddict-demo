@@ -12,7 +12,7 @@ namespace LegacyAuthDemo.WebApi.Controllers;
 
 /// <summary>
 /// The protected demo API: every route is gated by a legacy PERMISSION_ policy
-/// resolved dynamically against the ap_permissions claims that the OpenIddict
+/// resolved dynamically against the demo_permissions claims that the OpenIddict
 /// validation event hydrated onto the principal. No ASP.NET roles anywhere.
 /// </summary>
 [ApiController]
@@ -29,7 +29,7 @@ public class DemoController : ControllerBase
     /// <summary>Requires the legacy permission "route.demo.view".</summary>
     [HttpGet("view-data")]
     [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
-               Policy = ApPolicies.CanViewDemo)]
+               Policy = DemoPolicies.CanViewDemo)]
     public IActionResult ViewData()
     {
         var ctx = GetRequestUserContext();
@@ -45,7 +45,7 @@ public class DemoController : ControllerBase
     /// <summary>Requires the legacy permission "route.demo.manage" (bob gets 403 here).</summary>
     [HttpPost("manage-data")]
     [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
-               Policy = ApPolicies.CanManageDemo)]
+               Policy = DemoPolicies.CanManageDemo)]
     public IActionResult ManageData([FromBody] ManageRequest request)
     {
         var ctx = GetRequestUserContext();
@@ -76,7 +76,7 @@ public class DemoController : ControllerBase
 
         return Ok(new
         {
-            note = "'ap_permissions' claims come from the cache via LegacyOpenIdDictEventHandler, not from the token.",
+            note = "'demo_permissions' claims come from the cache via LegacyOpenIdDictEventHandler, not from the token.",
             identities
         });
     }

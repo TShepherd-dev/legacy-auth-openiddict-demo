@@ -7,7 +7,7 @@ namespace LegacyAuthDemo.Authorization.Sessions;
 
 /// <summary>
 /// Mirrors DefaultAuthUserSession (297 lines in the legacy codebase, compacted):
-/// keeps userId -> sessionId in memory and mirrors it into the "ap_session" cookie
+/// keeps userId -> sessionId in memory and mirrors it into the "demo_session" cookie
 /// so the check-session iframe can report session state to RP iframes.
 /// </summary>
 public class DefaultAuthUserSession : IAuthUserSession
