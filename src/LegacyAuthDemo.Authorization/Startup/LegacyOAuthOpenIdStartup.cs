@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using LegacyAuthDemo.Authorization.Authorization;
 using LegacyAuthDemo.Authorization.Data;
 using LegacyAuthDemo.Authorization.Repositories;
@@ -46,9 +48,12 @@ public class LegacyOAuthOpenIdStartup
         // 1. DbContext - for OpenIddict only, NOT for the entire API.
         //    Int keys everywhere to match the legacy int UserId world.
         // ------------------------------------------------------------------
+        var sqlitePath = authOptions.SqlitePath;
         services.AddDbContext<LegacyDbContext>(options =>
         {
-            options.UseSqlite(config.GetConnectionString("Default"));
+            options.UseSqlite(sqlitePath is null
+                ? config.GetConnectionString("Default")
+                : $"Data Source={sqlitePath}");
             options.UseOpenIddict<int>();
         });
 
@@ -95,7 +100,13 @@ public class LegacyOAuthOpenIdStartup
             };
         });
 
-        services.AddDataProtection().SetApplicationName("LegacyAuthDemo");
+        var dataProtection = services.AddDataProtection().SetApplicationName("LegacyAuthDemo");
+        if (!string.IsNullOrWhiteSpace(authOptions.DataProtectionKeyPath))
+        {
+            // Hosted environments: persist the key ring so cookies/reference
+            // tokens survive restarts and scale-out.
+            dataProtection.PersistKeysToFileSystem(new DirectoryInfo(authOptions.DataProtectionKeyPath));
+        }
 
         services.AddSingleton<LegacyUserDal>();
         services.AddHttpContextAccessor();
@@ -143,6 +154,22 @@ public class LegacyOAuthOpenIdStartup
                     options.AddEphemeralEncryptionKey()
                            .AddEphemeralSigningKey()
                            .DisableAccessTokenEncryption();   // demo readability; prod keeps tokens encrypted
+                }
+                else
+                {
+                    // Hosted/production: stable keys so tokens remain valid across
+                    // restarts. Self-signed certs are generated once on first boot
+                    // and persisted to mounted storage - no secrets in the repo.
+                    var certDir = Path.GetDirectoryName(authOptions.SigningCertificatePath)
+                                  ?? throw new InvalidOperationException(
+                                      "Auth:SigningCertificatePath must be configured outside Development.");
+                    Directory.CreateDirectory(certDir);
+
+                    options.AddSigningCertificate(GetOrCreateCertificate(
+                        authOptions.SigningCertificatePath!, authOptions.CertificatePassword, "CN=LegacyAuthDemo Signing"));
+                    options.AddEncryptionCertificate(GetOrCreateCertificate(
+                        authOptions.EncryptionCertificatePath ?? Path.Combine(certDir, "encryption.pfx"),
+                        authOptions.CertificatePassword, "CN=LegacyAuthDemo Encryption"));
                 }
 
                 options.UseAspNetCore()
@@ -205,11 +232,31 @@ public class LegacyOAuthOpenIdStartup
         // Authorization plumbing for the dynamic PERMISSION_ policy provider.
         services.AddSingleton<IAuthorizationPolicyProvider, LegacyRoutePermissionAuthorizationPolicyProvider>();
 
-        // Dev-time client seeding + token pruning (Quartz in the legacy codebase).
-        if (isDevelopment)
-        {
-            services.AddHostedService<ClientAppRegistration>();
-        }
+        // Client seeding (localhost + any environment-configured redirect URIs)
+        // and token pruning (Quartz in the legacy codebase).
+        services.AddHostedService<ClientAppRegistration>();
         services.AddHostedService<TokenCleanupHostedService>();
+    }
+
+    /// <summary>
+    /// Loads a self-signed certificate from <paramref name="path"/>, generating
+    /// and persisting it on first boot. Keeps the OIDC keys stable across
+    /// restarts without committing any secret material to source control.
+    /// </summary>
+    private static X509Certificate2 GetOrCreateCertificate(string path, string password, string subjectName)
+    {
+        if (!File.Exists(path))
+        {
+            using var rsa = RSA.Create(2048);
+            var request = new CertificateRequest(
+                subjectName, rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+            request.CertificateExtensions.Add(new X509BasicConstraintsExtension(false, false, 0, false));
+
+            using var certificate = request.CreateSelfSigned(
+                DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddYears(10));
+            File.WriteAllBytes(path, certificate.Export(X509ContentType.Pfx, password));
+        }
+
+        return new X509Certificate2(path, password);
     }
 }

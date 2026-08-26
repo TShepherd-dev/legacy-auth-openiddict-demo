@@ -1,4 +1,6 @@
+using LegacyAuthDemo.Authorization.Startup;
 using LegacyAuthDemo.Domain.Authentication;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using OpenIddict.Abstractions;
@@ -7,7 +9,9 @@ namespace LegacyAuthDemo.Authorization.Data;
 
 /// <summary>
 /// Mirrors the legacy dev-time client seeding: seeds
-/// the known dev clients on startup, with retry-on-concurrency like the original.
+/// the known clients on startup, with retry-on-concurrency like the original.
+/// SPA redirect URIs come from configuration so hosted environments register
+/// their own URLs alongside the localhost defaults.
 /// </summary>
 public class ClientAppRegistration : IHostedService
 {
@@ -23,6 +27,8 @@ public class ClientAppRegistration : IHostedService
         using var scope = _serviceProvider.CreateScope();
 
         var manager = scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();
+        var authOptions = scope.ServiceProvider.GetRequiredService<IConfiguration>()
+            .GetSection(LegacyAuthOptions.SectionName).Get<LegacyAuthOptions>() ?? new LegacyAuthOptions();
 
         await UpdateWithRetryAsync(manager, LegacyAuthConstants.Applications.SpaFrontEnd, descriptor =>
         {
@@ -30,8 +36,14 @@ public class ClientAppRegistration : IHostedService
             descriptor.ApplicationType = OpenIddictConstants.ApplicationTypes.Web;
             descriptor.ClientType = OpenIddictConstants.ClientTypes.Public;
             descriptor.ConsentType = OpenIddictConstants.ConsentTypes.Implicit;
-            descriptor.RedirectUris.Add(new Uri("http://localhost:8080/auth-callback"));
-            descriptor.PostLogoutRedirectUris.Add(new Uri("http://localhost:8080/auth-logout"));
+            foreach (var uri in authOptions.SpaRedirectUris)
+            {
+                descriptor.RedirectUris.Add(new Uri(uri));
+            }
+            foreach (var uri in authOptions.SpaPostLogoutRedirectUris)
+            {
+                descriptor.PostLogoutRedirectUris.Add(new Uri(uri));
+            }
             descriptor.Permissions.UnionWith(
             [
                 OpenIddictConstants.Permissions.Endpoints.Authorization,

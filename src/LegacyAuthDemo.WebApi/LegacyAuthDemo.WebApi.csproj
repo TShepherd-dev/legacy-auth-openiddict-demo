@@ -15,4 +15,12 @@
     <ProjectReference Include="..\LegacyAuthDemo.Domain\LegacyAuthDemo.Domain.csproj" />
   </ItemGroup>
 
+  <!-- Azure deploy: copy the pre-built Vue SPA into wwwroot during publish.
+       The CI workflow builds frontend/dist first and passes it via -p:SpaDistDir. -->
+  <Target Name="IncludeSpaDist" BeforeTargets="ComputeFilesToPublish" Condition="'$(SpaDistDir)' != ''">
+    <ItemGroup>
+      <Content Include="$(SpaDistDir)\**\*" CopyToPublishDirectory="PreserveNewest" LinkBase="wwwroot\" />
+    </ItemGroup>
+  </Target>
+
 </Project>

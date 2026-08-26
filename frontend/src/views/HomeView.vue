@@ -95,7 +95,7 @@ async function run(label, fn) {
   }
 }
 
-const callPublic = () => run('GET /api/demo (public)', () => fetch('https://localhost:5001/api/demo').then(async (r) => ({ status: r.status, body: await r.json() })))
+const callPublic = () => run('GET /api/demo (public)', () => fetch(`${api.baseUrl}/api/demo`).then(async (r) => ({ status: r.status, body: await r.json() })))
 const callViewData = () => run('GET /api/demo/view-data', () => api.fetch('/api/demo/view-data'))
 const callMe = () => {
   const p = api.fetch('/api/demo/me').then(async (res) => {

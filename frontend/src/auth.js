@@ -1,12 +1,23 @@
 import { UserManager, WebStorageStateStore } from 'oidc-client-ts'
 
-// Mirrors the "the platform BFF SPA client" client seeded by the legacy client seeding service
-// in the legacy codebase: public SPA, authorization_code + refresh_token, PKCE required.
+// Mirrors the platform BFF SPA client seeded by the client seeding service:
+// public SPA, authorization_code + refresh_token, PKCE required.
+//
+// Origin-aware: locally (vite dev server on :8080) talk to the API on :5001;
+// deployed, the SPA is served BY the API from wwwroot, so same origin works
+// for both the OIDC endpoints and /api/* - no CORS involved in production.
+const isLocal = window.location.port === '8080'
+const baseUrl = isLocal ? 'https://localhost:5001' : window.location.origin
+
 const config = {
-  authority: 'https://localhost:5001',
+  authority: baseUrl,
   client_id: 'LegacyAuthDemo.Spa',
-  redirect_uri: 'http://localhost:8080/auth-callback',
-  post_logout_redirect_uri: 'http://localhost:8080/auth-logout',
+  redirect_uri: isLocal
+    ? 'http://localhost:8080/auth-callback'
+    : `${window.location.origin}/auth-callback`,
+  post_logout_redirect_uri: isLocal
+    ? 'http://localhost:8080/auth-logout'
+    : `${window.location.origin}/auth-logout`,
   response_type: 'code',
   scope: 'openid email profile roles offline_access',
   userStore: new WebStorageStateStore({ store: window.localStorage }),
@@ -43,8 +54,8 @@ export function decodeJwt(token) {
 }
 
 export class ApiClient {
-  constructor(baseUrl = 'https://localhost:5001') {
-    this.baseUrl = baseUrl
+  constructor(baseUrlOverride = null) {
+    this.baseUrl = baseUrlOverride ?? baseUrl
   }
 
   async fetch(path, options = {}, retried = false) {

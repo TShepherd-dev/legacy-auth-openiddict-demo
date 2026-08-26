@@ -154,3 +154,50 @@ curl.exe -k -X POST https://localhost:5001/ap-auth-server/connect/getPatToken `
 The returned JWT carries `ap_tokentype=ApPat`. Using it against
 `/api/demo/view-data` yields **403** even though alice herself may view data — the
 PAT only maps `api.users.manage` → `route.users.manage`.
+
+## Deploying to Azure (free tier)
+
+The whole demo (auth server + API + built SPA) runs as **one App Service** on the
+free **F1** plan. The SPA is served from `wwwroot`, so production uses a single
+origin — no CORS, and OIDC redirect URIs point back at the same site.
+
+### One-time portal setup
+
+1. Create → **App Service**:
+   - Resource group: new (e.g. `legacy-auth-demo-rg`)
+   - Name: e.g. `legacy-auth-demo` (this becomes `https://legacy-auth-demo.azurewebsites.net`)
+   - Publish: **Code**, Runtime stack: **.NET 10 (LTS)**, OS: **Linux**
+   - Pricing plan: **Free F1**
+2. In the app: **Deployment Center → Settings → Basic auth**: leave **on**
+   (the publish-profile deploy needs it).
+3. Download the publish profile (**Overview → Get publish profile**) and copy its XML.
+
+### Repo secrets
+
+Add two secrets (repo → Settings → Secrets and variables → Actions):
+
+| Secret | Value |
+|---|---|
+| `AZURE_WEBAPP_NAME` | `legacy-auth-demo` |
+| `AZURE_WEBAPP_PUBLISH_PROFILE` | contents of the downloaded `.PublishSettings` file |
+
+### Point the demo at your app name
+
+Either edit `src/LegacyAuthDemo.WebApi/appsettings.Production.json` replacing
+`REPLACE-WITH-YOUR-APP-NAME`, or set these App Service environment variables
+(Settings → Environment variables):
+
+```
+Auth__AuthorityUrl            = https://legacy-auth-demo.azurewebsites.net
+Auth__SpaRedirectUris__0      = https://legacy-auth-demo.azurewebsites.net/auth-callback
+Auth__SpaPostLogoutRedirectUris__0 = https://legacy-auth-demo.azurewebsites.net/auth-logout
+```
+
+(SQLite path, signing/encryption certs and data-protection keys already default to
+persistent `/home/data` paths; certificates are self-signed and generated on first start.)
+
+### Deploy
+
+Push to `master` — the included GitHub Actions workflow builds the SPA, publishes
+the API with the SPA embedded in `wwwroot`, and zip-deploys using the publish
+profile. First request after idle takes ~30–60 s on F1 while the instance wakes up.
