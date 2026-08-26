@@ -48,7 +48,11 @@ public class LegacyOAuthOpenIdStartup
         // 1. DbContext - for OpenIddict only, NOT for the entire API.
         //    Int keys everywhere to match the legacy int UserId world.
         // ------------------------------------------------------------------
-        var sqlitePath = authOptions.SqlitePath;
+        var sqlitePath = ResolveStoragePath(authOptions.SqlitePath);
+        if (sqlitePath is not null)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(sqlitePath)!);
+        }
         services.AddDbContext<LegacyDbContext>(options =>
         {
             options.UseSqlite(sqlitePath is null
@@ -101,11 +105,13 @@ public class LegacyOAuthOpenIdStartup
         });
 
         var dataProtection = services.AddDataProtection().SetApplicationName("LegacyAuthDemo");
-        if (!string.IsNullOrWhiteSpace(authOptions.DataProtectionKeyPath))
+        var dataProtectionPath = ResolveStoragePath(authOptions.DataProtectionKeyPath);
+        if (dataProtectionPath is not null)
         {
             // Hosted environments: persist the key ring so cookies/reference
             // tokens survive restarts and scale-out.
-            dataProtection.PersistKeysToFileSystem(new DirectoryInfo(authOptions.DataProtectionKeyPath));
+            Directory.CreateDirectory(dataProtectionPath);
+            dataProtection.PersistKeysToFileSystem(new DirectoryInfo(dataProtectionPath));
         }
 
         services.AddSingleton<LegacyUserDal>();
@@ -160,16 +166,20 @@ public class LegacyOAuthOpenIdStartup
                     // Hosted/production: stable keys so tokens remain valid across
                     // restarts. Self-signed certs are generated once on first boot
                     // and persisted to mounted storage - no secrets in the repo.
-                    var certDir = Path.GetDirectoryName(authOptions.SigningCertificatePath)
-                                  ?? throw new InvalidOperationException(
-                                      "Auth:SigningCertificatePath must be configured outside Development.");
-                    Directory.CreateDirectory(certDir);
+                    var signingCertPath = ResolveStoragePath(authOptions.SigningCertificatePath)
+                                          ?? throw new InvalidOperationException(
+                                              "Auth:SigningCertificatePath must be configured outside Development.");
+                    var encryptionCertPath = ResolveStoragePath(authOptions.EncryptionCertificatePath)
+                                             ?? Path.Combine(
+                                                 Path.GetDirectoryName(signingCertPath)!,
+                                                 "encryption.pfx");
+
+                    Directory.CreateDirectory(Path.GetDirectoryName(signingCertPath)!);
 
                     options.AddSigningCertificate(GetOrCreateCertificate(
-                        authOptions.SigningCertificatePath!, authOptions.CertificatePassword, "CN=LegacyAuthDemo Signing"));
+                        signingCertPath, authOptions.CertificatePassword, "CN=LegacyAuthDemo Signing"));
                     options.AddEncryptionCertificate(GetOrCreateCertificate(
-                        authOptions.EncryptionCertificatePath ?? Path.Combine(certDir, "encryption.pfx"),
-                        authOptions.CertificatePassword, "CN=LegacyAuthDemo Encryption"));
+                        encryptionCertPath, authOptions.CertificatePassword, "CN=LegacyAuthDemo Encryption"));
                 }
 
                 options.UseAspNetCore()
@@ -236,6 +246,35 @@ public class LegacyOAuthOpenIdStartup
         // and token pruning (Quartz in the legacy codebase).
         services.AddHostedService<ClientAppRegistration>();
         services.AddHostedService<TokenCleanupHostedService>();
+    }
+
+    /// <summary>
+    /// Resolves platform-neutral storage paths like "/home/data/x" against the
+    /// actual home directory. Azure App Service sets HOME on BOTH Linux (/home)
+    /// and Windows (C:\home), so the same config works on either OS; without
+    /// HOME (local machine) the path resolves under the app base directory.
+    /// </summary>
+    private static string? ResolveStoragePath(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return null;
+        }
+
+        var home = Environment.GetEnvironmentVariable("HOME");
+        if (!string.IsNullOrEmpty(home))
+        {
+            foreach (var prefix in new[] { "/home/", "\\home\\" })
+            {
+                if (path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    path = Path.Combine(home, path[prefix.Length..].TrimStart('/', '\\'));
+                    break;
+                }
+            }
+        }
+
+        return Path.GetFullPath(path);
     }
 
     /// <summary>
