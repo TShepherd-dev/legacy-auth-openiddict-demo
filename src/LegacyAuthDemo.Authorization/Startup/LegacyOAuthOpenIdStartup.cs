@@ -284,6 +284,7 @@ public class LegacyOAuthOpenIdStartup
     /// </summary>
     private static X509Certificate2 GetOrCreateCertificate(string path, string password, string subjectName)
     {
+        byte[] pfxBytes;
         if (!File.Exists(path))
         {
             using var rsa = RSA.Create(2048);
@@ -293,9 +294,20 @@ public class LegacyOAuthOpenIdStartup
 
             using var certificate = request.CreateSelfSigned(
                 DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddYears(10));
-            File.WriteAllBytes(path, certificate.Export(X509ContentType.Pfx, password));
+            pfxBytes = certificate.Export(X509ContentType.Pfx, password);
+
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            File.WriteAllBytes(path, pfxBytes);
+        }
+        else
+        {
+            pfxBytes = File.ReadAllBytes(path);
         }
 
-        return new X509Certificate2(path, password);
+        // Load from memory with ephemeral keys: hosted workers frequently have
+        // no loaded user profile, and the default key-store import fails with a
+        // MISLEADING CryptographicException ("cannot find the file specified").
+        return new X509Certificate2(
+            pfxBytes, password, X509KeyStorageFlags.EphemeralKeySet);
     }
 }
