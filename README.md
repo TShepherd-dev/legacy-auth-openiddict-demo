@@ -10,6 +10,8 @@ it is the **seams**: custom Identity stores over the legacy DAL, tokens that car
 almost nothing, server-side permission re-hydration after token validation, and
 authorization policies driven by legacy permissions instead of ASP.NET roles.
 
+For more information on the OpenIddict project - go here: https://documentation.openiddict.com/
+
 ## What makes this approach distinctive
 
 1. **Tokens carry minimal claims.** Only `sub`, `demo_clientId`, `demo_siteId`,
