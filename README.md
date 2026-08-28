@@ -5,6 +5,16 @@ legacy .NET platform that does **not** use ASP.NET Identity's native user/role/c
 model — it has its own users, multi-tenancy (`ClientId`/`SiteId`), resources and
 permissions stored in its own tables and caches.
 
+## Business Scenario
+The business scenario here was to be able to cover a certain number of things
+1. Properly secure API requests from the Vue Frontend
+2. Properly manage other external services to access the system - reporting service, custom cdn service
+3. Enable simple SSO implementations with external services - Azure, Auth0, AWS
+4. Enable integration with a client's SAML authentication system
+
+The solution needed to do this WITHOUT changing anything of the pre-existing authorization and User management 
+logic within the system.
+
 The interesting part is not the OAuth flows themselves (OpenIddict provides those) —
 it is the **seams**: custom Identity stores over the legacy DAL, tokens that carry
 almost nothing, server-side permission re-hydration after token validation, and
